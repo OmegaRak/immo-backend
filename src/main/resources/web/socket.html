@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page 2 - Socket TCP brute</title>
+<style>
+  :root { --bg:#0b1120; --card:#111c33; --acc:#facc15; --txt:#e2e8f0; --mut:#94a3b8; --ok:#4ade80; --err:#f87171; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--bg); color:var(--txt); }
+  header { padding:20px 24px; background:var(--card); border-bottom:3px solid var(--acc); }
+  h1 { margin:0 0 4px; font-size:20px; }
+  header p { margin:0; color:var(--mut); font-size:13px; }
+  nav a { color:var(--acc); margin-right:16px; font-size:13px; text-decoration:none; }
+  main { padding:24px; max-width:1100px; margin:auto; }
+  .panneau { background:var(--card); border-radius:10px; padding:18px; margin-bottom:18px; }
+  .panneau h2 { margin:0 0 12px; font-size:15px; color:var(--acc); }
+  input { width:100%; padding:10px; border-radius:6px; border:1px solid #334155; background:#050b17; color:var(--txt); font-family:ui-monospace,monospace; }
+  button { padding:9px 15px; border:0; border-radius:6px; background:var(--acc); color:#422006; font-weight:600; cursor:pointer; margin:8px 8px 0 0; }
+  button.sec { background:#334155; color:var(--txt); font-family:ui-monospace,monospace; font-size:12px; }
+  #console { background:#020617; border-radius:8px; padding:14px; height:300px; overflow:auto;
+             font-family:ui-monospace,SFMono-Regular,monospace; font-size:12.5px; line-height:1.6; }
+  .env { color:var(--acc); }
+  .rec { color:var(--ok); word-break:break-all; }
+  .err { color:var(--err); }
+  .sys { color:var(--mut); font-style:italic; }
+  .cartes { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:12px; }
+  .carte { background:#0b1628; border:1px solid #1e293b; border-radius:8px; padding:12px; font-size:13px; }
+  .carte h3 { margin:0 0 6px; font-size:14px; color:var(--acc); }
+  .carte div { color:var(--mut); }
+  .prix { color:var(--ok); font-weight:700; margin-top:6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Page 2 &mdash; Serveur Socket TCP brut (port 9090)</h1>
+  <p>Les commandes texte sont relayees par le pont <code>/api/socket</code> qui ouvre une vraie socket Java vers le port 9090.</p>
+  <nav style="margin-top:10px"><a href="/soap.html">&larr; Page 1 : Service SOAP</a></nav>
+</header>
+
+<main>
+  <div class="panneau">
+    <h2>Commandes rapides</h2>
+    <button class="sec" onclick="envoyer('HELP')">HELP</button>
+    <button class="sec" onclick="envoyer('LIST')">LIST</button>
+    <button class="sec" onclick="envoyer('STATS')">STATS</button>
+    <button class="sec" onclick="envoyer('GET 1')">GET 1</button>
+    <button class="sec" onclick="envoyer('SEARCH Antananarivo||1000000000|')">SEARCH Antananarivo</button>
+    <button class="sec" onclick="envoyer('ADD Villa test|VILLA|Antsirabe|Antsenakely|200|5|600000000')">ADD (exemple)</button>
+  </div>
+
+  <div class="panneau">
+    <h2>Commande manuelle</h2>
+    <input id="cmd" placeholder="Ex : SEARCH Antananarivo|VILLA|2000000000|100"
+           onkeydown="if(event.key==='Enter') envoyerSaisie()">
+    <button onclick="envoyerSaisie()">Envoyer sur la socket</button>
+    <button class="sec" onclick="document.getElementById('console').innerHTML=''">Vider la console</button>
+  </div>
+
+  <div class="panneau">
+    <h2>Console TCP</h2>
+    <div id="console"></div>
+  </div>
+
+  <div class="panneau">
+    <h2>Biens recus</h2>
+    <div class="cartes" id="cartes"><span style="color:#94a3b8">Envoyez LIST pour charger les biens.</span></div>
+  </div>
+</main>
+
+<script>
+const consoleEl = document.getElementById('console');
+
+function ligne(texte, classe) {
+  const d = document.createElement('div');
+  d.className = classe;
+  d.textContent = texte;
+  consoleEl.appendChild(d);
+  consoleEl.scrollTop = consoleEl.scrollHeight;
+}
+
+function envoyerSaisie() {
+  const champ = document.getElementById('cmd');
+  if (champ.value.trim()) { envoyer(champ.value.trim()); champ.value = ''; }
+}
+
+async function envoyer(commande) {
+  ligne('>> ' + commande, 'env');
+  try {
+    const reponse = await fetch('/api/socket', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      body: commande
+    });
+    const texte = await reponse.text();
+    const json = JSON.parse(texte);
+    if (json.status === 'OK') {
+      ligne('<< ' + texte, 'rec');
+      afficher(json.data);
+    } else {
+      ligne('<< ' + (json.message || texte), 'err');
+    }
+  } catch (e) {
+    ligne('!! Erreur reseau : ' + e.message, 'err');
+  }
+}
+
+function afficher(data) {
+  if (!data) return;
+  let biens = null;
+  if (Array.isArray(data)) biens = data;
+  else if (typeof data === 'object' && data.titre) biens = [data];
+  if (!biens) return;
+
+  const conteneur = document.getElementById('cartes');
+  if (!biens.length) {
+    conteneur.innerHTML = '<span style="color:#94a3b8">Aucun bien.</span>';
+    return;
+  }
+  conteneur.innerHTML = biens.map(b => `
+    <div class="carte">
+      <h3>#${b.id} ${b.titre}</h3>
+      <div>${b.type} &bull; ${b.ville}${b.quartier ? ' (' + b.quartier + ')' : ''}</div>
+      <div>${b.surface} m2 &bull; ${b.nbPieces} piece(s)</div>
+      <div class="prix">${Number(b.prix).toLocaleString('fr-FR')} Ar</div>
+      <div style="color:${b.disponible ? '#4ade80' : '#f87171'}">
+        ${b.disponible ? 'Disponible' : 'Indisponible'}</div>
+    </div>`).join('');
+}
+
+ligne('Pont HTTP -> socket TCP prêt. Serveur socket : localhost:9090', 'sys');
+envoyer('LIST');
+</script>
+</body>
+</html>

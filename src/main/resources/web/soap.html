@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page 1 - Service SOAP immobilier</title>
+<style>
+  :root { --bg:#0f172a; --card:#1e293b; --acc:#38bdf8; --txt:#e2e8f0; --mut:#94a3b8; --ok:#4ade80; --err:#f87171; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--bg); color:var(--txt); }
+  header { padding:20px 24px; background:var(--card); border-bottom:3px solid var(--acc); }
+  h1 { margin:0 0 4px; font-size:20px; }
+  header p { margin:0; color:var(--mut); font-size:13px; }
+  nav a { color:var(--acc); margin-right:16px; font-size:13px; text-decoration:none; }
+  main { padding:24px; max-width:1100px; margin:auto; }
+  .panneau { background:var(--card); border-radius:10px; padding:18px; margin-bottom:18px; }
+  .panneau h2 { margin:0 0 12px; font-size:15px; color:var(--acc); }
+  .grille { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; }
+  input, select { width:100%; padding:9px; border-radius:6px; border:1px solid #334155; background:#0b1220; color:var(--txt); }
+  button { padding:9px 16px; border:0; border-radius:6px; background:var(--acc); color:#082f49; font-weight:600; cursor:pointer; margin:8px 8px 0 0; }
+  button.sec { background:#334155; color:var(--txt); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { padding:8px; border-bottom:1px solid #334155; text-align:left; }
+  th { color:var(--mut); font-weight:600; }
+  pre { background:#020617; padding:12px; border-radius:8px; overflow:auto; font-size:11.5px; max-height:260px; color:#7dd3fc; }
+  .badge { padding:2px 8px; border-radius:20px; font-size:11px; }
+  .oui { background:rgba(74,222,128,.15); color:var(--ok); }
+  .non { background:rgba(248,113,113,.15); color:var(--err); }
+  #etat { font-size:13px; margin-top:8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Page 1 &mdash; Service SOAP (JAX-WS)</h1>
+  <p>Enveloppes SOAP construites a la main et envoyees en POST sur <code>/ws/immobilier</code></p>
+  <nav style="margin-top:10px">
+    <a href="/socket.html">&rarr; Page 2 : Socket brute</a>
+    <a href="/ws/immobilier?wsdl" target="_blank">Voir le WSDL</a>
+  </nav>
+</header>
+
+<main>
+  <div class="panneau">
+    <h2>Actions</h2>
+    <button onclick="listerBiens()">Lister tous les biens</button>
+    <button onclick="statistiques()">Statistiques</button>
+    <button class="sec" onclick="document.getElementById('brut').textContent=''">Effacer le journal</button>
+    <div id="etat"></div>
+  </div>
+
+  <div class="panneau">
+    <h2>Recherche multi-criteres</h2>
+    <div class="grille">
+      <input id="r-ville" placeholder="Ville (ex: Antananarivo)">
+      <select id="r-type">
+        <option value="">Tous les types</option>
+        <option>APPARTEMENT</option><option>MAISON</option><option>VILLA</option>
+        <option>TERRAIN</option><option>BUREAU</option>
+      </select>
+      <input id="r-prix" type="number" placeholder="Prix max (Ar)">
+      <input id="r-surface" type="number" placeholder="Surface min (m2)">
+    </div>
+    <button onclick="rechercher()">Rechercher</button>
+  </div>
+
+  <div class="panneau">
+    <h2>Ajouter un bien</h2>
+    <div class="grille">
+      <input id="a-titre" placeholder="Titre">
+      <select id="a-type"><option>APPARTEMENT</option><option>MAISON</option><option>VILLA</option>
+        <option>TERRAIN</option><option>BUREAU</option></select>
+      <input id="a-ville" placeholder="Ville">
+      <input id="a-quartier" placeholder="Quartier">
+      <input id="a-surface" type="number" placeholder="Surface m2">
+      <input id="a-pieces" type="number" placeholder="Nb pieces">
+      <input id="a-prix" type="number" placeholder="Prix Ar">
+    </div>
+    <button onclick="ajouter()">Ajouter via SOAP</button>
+  </div>
+
+  <div class="panneau">
+    <h2>Resultats</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Titre</th><th>Type</th><th>Ville</th><th>Quartier</th>
+        <th>Surface</th><th>Pieces</th><th>Prix (Ar)</th><th>Dispo</th><th></th></tr></thead>
+      <tbody id="tbody"><tr><td colspan="10" style="color:#94a3b8">Aucune donnee chargee.</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="panneau">
+    <h2>Journal SOAP (requete / reponse XML)</h2>
+    <pre id="brut"></pre>
+  </div>
+</main>
+
+<script>
+const URL_SOAP = '/ws/immobilier';
+const NS = 'http://soap.immo.mg/';
+
+function journal(titre, contenu) {
+  const pre = document.getElementById('brut');
+  pre.textContent += '=== ' + titre + ' ===\n' + contenu + '\n\n';
+  pre.scrollTop = pre.scrollHeight;
+}
+function etat(msg, erreur) {
+  const e = document.getElementById('etat');
+  e.textContent = msg;
+  e.style.color = erreur ? '#f87171' : '#4ade80';
+}
+
+/* Construit l'enveloppe SOAP (style RPC/literal : parametres sans prefixe) */
+function enveloppe(operation, params) {
+  let corps = '';
+  for (const [cle, val] of Object.entries(params)) {
+    corps += '      <' + cle + '>' + String(val).replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</' + cle + '>\n';
+  }
+  return '<?xml version="1.0" encoding="UTF-8"?>\n'
+    + '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:imm="' + NS + '">\n'
+    + '  <soapenv:Header/>\n  <soapenv:Body>\n'
+    + '    <imm:' + operation + '>\n' + corps + '    </imm:' + operation + '>\n'
+    + '  </soapenv:Body>\n</soapenv:Envelope>';
+}
+
+async function appelSoap(operation, params) {
+  const xml = enveloppe(operation, params || {});
+  journal('REQUETE ' + operation, xml);
+  const reponse = await fetch(URL_SOAP, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/xml; charset=utf-8', 'SOAPAction': '""' },
+    body: xml
+  });
+  const texte = await reponse.text();
+  journal('REPONSE ' + operation + ' (HTTP ' + reponse.status + ')', texte);
+  const doc = new DOMParser().parseFromString(texte, 'text/xml');
+  const faute = doc.getElementsByTagNameNS('*', 'Fault')[0];
+  if (faute) throw new Error(faute.textContent);
+  return doc;
+}
+
+function texteDe(noeud, nom) {
+  const el = noeud.getElementsByTagNameNS('*', nom)[0];
+  return el ? el.textContent : '';
+}
+
+function extraireBiens(doc) {
+  // en RPC/literal, chaque bien revient dans un element <bien>
+  const noeuds = doc.getElementsByTagNameNS('*', 'bien');
+  const liste = [];
+  for (const n of noeuds) {
+    liste.push({
+      id: texteDe(n, 'id'), titre: texteDe(n, 'titre'), type: texteDe(n, 'type'),
+      ville: texteDe(n, 'ville'), quartier: texteDe(n, 'quartier'),
+      surface: texteDe(n, 'surface'), nbPieces: texteDe(n, 'nbPieces'),
+      prix: texteDe(n, 'prix'), disponible: texteDe(n, 'disponible')
+    });
+  }
+  return liste;
+}
+
+function afficher(biens) {
+  const tbody = document.getElementById('tbody');
+  if (!biens.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="color:#94a3b8">Aucun bien trouve.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = biens.map(b => `<tr>
+      <td>${b.id}</td><td>${b.titre}</td><td>${b.type}</td><td>${b.ville}</td><td>${b.quartier}</td>
+      <td>${Math.round(b.surface)} m2</td><td>${b.nbPieces}</td>
+      <td>${Number(b.prix).toLocaleString('fr-FR')}</td>
+      <td><span class="badge ${b.disponible === 'true' ? 'oui' : 'non'}">${b.disponible === 'true' ? 'oui' : 'non'}</span></td>
+      <td><button class="sec" style="padding:4px 10px;margin:0" onclick="supprimer(${b.id})">X</button></td>
+    </tr>`).join('');
+}
+
+async function listerBiens() {
+  try {
+    const doc = await appelSoap('listerBiens', {});
+    const biens = extraireBiens(doc);
+    afficher(biens);
+    etat(biens.length + ' bien(s) charge(s) via SOAP.');
+  } catch (e) { etat('Erreur : ' + e.message, true); }
+}
+
+async function rechercher() {
+  try {
+    const doc = await appelSoap('rechercherBiens', {
+      ville: document.getElementById('r-ville').value,
+      type: document.getElementById('r-type').value,
+      prixMax: document.getElementById('r-prix').value || 0,
+      surfaceMin: document.getElementById('r-surface').value || 0
+    });
+    const biens = extraireBiens(doc);
+    afficher(biens);
+    etat(biens.length + ' resultat(s).');
+  } catch (e) { etat('Erreur : ' + e.message, true); }
+}
+
+async function ajouter() {
+  const titre = document.getElementById('a-titre').value.trim();
+  if (!titre) { etat('Le titre est obligatoire.', true); return; }
+  try {
+    await appelSoap('ajouterBien', {
+      titre: titre,
+      type: document.getElementById('a-type').value,
+      ville: document.getElementById('a-ville').value,
+      quartier: document.getElementById('a-quartier').value,
+      surface: document.getElementById('a-surface').value || 0,
+      nbPieces: document.getElementById('a-pieces').value || 0,
+      prix: document.getElementById('a-prix').value || 0
+    });
+    etat('Bien ajoute.');
+    listerBiens();
+  } catch (e) { etat('Erreur : ' + e.message, true); }
+}
+
+async function supprimer(id) {
+  try {
+    await appelSoap('supprimerBien', { id: id });
+    etat('Bien ' + id + ' supprime.');
+    listerBiens();
+  } catch (e) { etat('Erreur : ' + e.message, true); }
+}
+
+async function statistiques() {
+  try {
+    const doc = await appelSoap('obtenirStatistiques', {});
+    const s = doc.getElementsByTagNameNS('*', 'statistiques')[0];
+    etat('Total : ' + texteDe(s,'nombreTotal')
+       + ' | Disponibles : ' + texteDe(s,'nombreDisponibles')
+       + ' | Prix moyen : ' + Number(texteDe(s,'prixMoyen')).toLocaleString('fr-FR') + ' Ar'
+       + ' | Surface moyenne : ' + texteDe(s,'surfaceMoyenne') + ' m2');
+  } catch (e) { etat('Erreur : ' + e.message, true); }
+}
+
+listerBiens();
+</script>
+</body>
+</html>
