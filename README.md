@@ -4,9 +4,9 @@ Projet Java/Maven qui expose le **même jeu de données immobilières** par deux
 
 | Canal | Technologie | Adresse |
 |---|---|---|
-| Service SOAP | JAX-WS (RPC/literal) | `http://localhost:8080/ws/immobilier` (WSDL : `?wsdl`) |
+| Service SOAP | JAX-WS (RPC/literal) | `http://localhost:8081/ws/immobilier` (WSDL : `?wsdl`) |
 | Socket brute | `java.net.ServerSocket` | `localhost:9090` (protocole texte) |
-| Pages de test | HTML + JavaScript | `http://localhost:8080/soap.html` et `/socket.html` |
+| Pages de test | HTML + JavaScript | `http://localhost:8081/soap.html` et `/socket.html` |
 
 ---
 
@@ -121,9 +121,9 @@ Sortie attendue :
 =====================================================
   BACKEND IMMOBILIER DEMARRE
 -----------------------------------------------------
-  Page SOAP    : http://localhost:8080/soap.html
-  Page SOCKET  : http://localhost:8080/socket.html
-  WSDL         : http://localhost:8080/ws/immobilier?wsdl
+  Page SOAP    : http://localhost:8081/soap.html
+  Page SOCKET  : http://localhost:8081/socket.html
+  WSDL         : http://localhost:8081/ws/immobilier?wsdl
   Socket brute : localhost:9090  (nc localhost 9090)
 =====================================================
 ```
@@ -134,7 +134,7 @@ Arrêt : `Ctrl + C`.
 
 ## 5. Tests
 
-### 5.1 Page 1 — SOAP (`http://localhost:8080/soap.html`)
+### 5.1 Page 1 — SOAP (`http://localhost:8081/soap.html`)
 
 - **Lister tous les biens** : opération `listerBiens`
 - **Recherche multi-critères** : `rechercherBiens(ville, type, prixMax, surfaceMin)`
@@ -148,13 +148,13 @@ pour la soutenance.
 Vérifier le WSDL :
 
 ```bash
-curl http://localhost:8080/ws/immobilier?wsdl
+curl http://localhost:8081/ws/immobilier?wsdl
 ```
 
 Tester en ligne de commande :
 
 ```bash
-curl -X POST http://localhost:8080/ws/immobilier \
+curl -X POST http://localhost:8081/ws/immobilier \
   -H 'Content-Type: text/xml;charset=UTF-8' \
   -H 'SOAPAction: ""' \
   -d '<?xml version="1.0" encoding="UTF-8"?>
@@ -170,7 +170,7 @@ curl -X POST http://localhost:8080/ws/immobilier \
 </soapenv:Envelope>'
 ```
 
-### 5.2 Page 2 — Socket (`http://localhost:8080/socket.html`)
+### 5.2 Page 2 — Socket (`http://localhost:8081/socket.html`)
 
 Boutons de commandes rapides + champ de saisie libre + console TCP.
 
@@ -215,16 +215,16 @@ Réponse : **une ligne JSON**
 
 | Problème | Solution |
 |---|---|
-| `Address already in use` | `sudo lsof -i :8080` puis `kill -9 <PID>` (idem pour 9090) |
+| `Address already in use` | `sudo lsof -i :8081` puis `kill -9 <PID>` (idem pour 9090) |
 | `release version 17 not supported` | Installer le JDK 17 ou baisser `<maven.compiler.release>` |
-| Pages HTML vides | Ouvrir via `http://localhost:8080/...`, **jamais** en `file://` |
+| Pages HTML vides | Ouvrir via `http://localhost:8081/...`, **jamais** en `file://` |
 | Erreur `Connexion socket impossible` | Le serveur socket n'a pas démarré : vérifier le log `[SOCKET]` |
 | Build lent la 1re fois | Maven télécharge les dépendances dans `~/.m2` |
 
 Ouvrir les ports si UFW est actif :
 
 ```bash
-sudo ufw allow 8080/tcp
+sudo ufw allow 8081/tcp
 sudo ufw allow 9090/tcp
 ```
 
