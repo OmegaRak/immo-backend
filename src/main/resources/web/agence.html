@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Espace Agence — Gestion immobilière</title>
+<style>
+  :root {
+    --bg: #f6f5fb; --card: #ffffff; --acc: #7c3aed; --acc-dark: #6d28d9;
+    --txt: #1e1b2e; --mut: #6b7280; --line: #e5e2f0;
+    --ok: #16a34a; --warn: #d97706; --err: #dc2626;
+    --shadow: 0 1px 3px rgba(30,27,46,.08), 0 8px 24px rgba(30,27,46,.06);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--txt); }
+
+  header { background:linear-gradient(135deg,var(--acc),var(--acc-dark)); color:#fff; padding:22px 28px; }
+  header .ligne { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+  header h1 { margin:0; font-size:22px; }
+  header p { margin:4px 0 0; opacity:.9; font-size:13px; }
+  .statut-connexion { display:flex; align-items:center; gap:6px; font-size:12px; background:rgba(255,255,255,.15); padding:6px 12px; border-radius:20px; }
+  .point { width:8px; height:8px; border-radius:50%; background:#4ade80; }
+  .point.off { background:#f87171; }
+  nav a { color:#fff; text-decoration:none; font-size:12px; opacity:.85; margin-left:14px; }
+
+  main { max-width:1150px; margin:0 auto; padding:26px 20px 60px; display:grid; grid-template-columns:360px 1fr; gap:24px; }
+  @media (max-width:880px) { main { grid-template-columns:1fr; } }
+
+  h2.section { font-size:16px; color:var(--acc-dark); margin:0 0 14px; display:flex; align-items:center; gap:8px; }
+  .panneau { background:var(--card); border-radius:14px; box-shadow:var(--shadow); padding:20px; border:1px solid var(--line); margin-bottom:20px; }
+
+  .champ { margin-bottom:12px; }
+  .champ label { display:block; font-size:12.5px; font-weight:600; margin-bottom:5px; color:var(--mut); }
+  .champ input, .champ select { width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); font-size:14px; font-family:inherit; }
+  .deux-colonnes { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+  .btn { border:0; border-radius:8px; padding:11px 16px; font-weight:600; cursor:pointer; font-size:13.5px; }
+  .btn-primaire { background:var(--acc); color:#fff; width:100%; }
+  .btn-primaire:hover { background:var(--acc-dark); }
+  .btn-valider { background:#f0fdf4; color:var(--ok); }
+  .btn-refuser { background:#fef2f2; color:var(--err); }
+
+  .carte-demande { background:var(--card); border-radius:12px; box-shadow:var(--shadow); padding:16px 18px; margin-bottom:12px; border-left:5px solid var(--warn); animation:apparition .5s ease; }
+  .carte-demande.validee { border-left-color:var(--ok); }
+  .carte-demande.refusee { border-left-color:var(--err); opacity:.65; }
+  @keyframes apparition { from { transform:translateY(-8px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+  .carte-demande .haut { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:8px; }
+  .carte-demande b { font-size:15px; }
+  .carte-demande .sous { font-size:12.5px; color:var(--mut); }
+  .badge { font-size:11.5px; font-weight:700; padding:5px 12px; border-radius:20px; white-space:nowrap; }
+  .badge.EN_ATTENTE { background:#fffbeb; color:var(--warn); }
+  .badge.VALIDEE { background:#f0fdf4; color:var(--ok); }
+  .badge.REFUSEE { background:#fef2f2; color:var(--err); }
+  .infos-demande { font-size:13px; color:var(--txt); margin:10px 0; line-height:1.6; }
+  .infos-demande div span { color:var(--mut); }
+  .actions-demande { display:flex; gap:8px; }
+  .actions-demande .btn { flex:1; }
+
+  table { width:100%; border-collapse:collapse; font-size:13px; margin-top:6px; }
+  th, td { padding:8px 6px; border-bottom:1px solid var(--line); text-align:left; }
+  th { color:var(--mut); font-weight:600; font-size:12px; }
+  .badge-dispo { font-size:11px; padding:2px 8px; border-radius:20px; }
+  .badge-dispo.oui { background:#f0fdf4; color:var(--ok); }
+  .badge-dispo.non { background:#fef2f2; color:var(--err); }
+
+  #toasts { position:fixed; top:20px; right:20px; z-index:100; display:flex; flex-direction:column; gap:10px; max-width:340px; }
+  .toast { background:#fff; border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,.15); padding:14px 16px; border-left:5px solid var(--acc); animation:glisse .35s ease; }
+  .toast b { display:block; font-size:13.5px; margin-bottom:2px; }
+  .toast span { font-size:12.5px; color:var(--mut); }
+  @keyframes glisse { from { transform:translateX(40px); opacity:0; } to { transform:translateX(0); opacity:1; } }
+
+  .vide { color:var(--mut); font-size:13.5px; padding:20px; text-align:center; background:var(--card); border-radius:12px; border:1px dashed var(--line); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="ligne">
+    <div>
+      <h1>🏢 Espace Agence</h1>
+      <p>Publiez vos annonces et gérez les demandes de visite en temps réel</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px">
+      <span class="statut-connexion"><span class="point" id="point-connexion"></span><span id="texte-connexion">Connexion...</span></span>
+      <nav><a href="/client.html">Espace client →</a></nav>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div>
+    <div class="panneau">
+      <h2 class="section">➕ Publier une annonce</h2>
+      <div class="champ"><label>Titre</label><input id="a-titre" placeholder="Ex: Appartement F3 lumineux"></div>
+      <div class="deux-colonnes">
+        <div class="champ"><label>Type</label>
+          <select id="a-type"><option>APPARTEMENT</option><option>MAISON</option><option>VILLA</option><option>TERRAIN</option><option>BUREAU</option></select>
+        </div>
+        <div class="champ"><label>Ville</label><input id="a-ville" placeholder="Ville"></div>
+      </div>
+      <div class="champ"><label>Quartier</label><input id="a-quartier" placeholder="Quartier"></div>
+      <div class="deux-colonnes">
+        <div class="champ"><label>Surface (m²)</label><input id="a-surface" type="number"></div>
+        <div class="champ"><label>Nb pièces</label><input id="a-pieces" type="number"></div>
+      </div>
+      <div class="champ"><label>Prix (Ar)</label><input id="a-prix" type="number"></div>
+      <button class="btn btn-primaire" onclick="publierAnnonce()">Publier l'annonce</button>
+    </div>
+
+    <div class="panneau">
+      <h2 class="section">📋 Mes annonces</h2>
+      <table id="table-annonces"><thead><tr><th>Titre</th><th>Ville</th><th>Prix</th><th>Dispo</th></tr></thead>
+        <tbody><tr><td colspan="4" class="vide">Chargement...</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <div>
+    <h2 class="section">📨 Demandes de visite reçues</h2>
+    <div id="liste-demandes"><div class="vide">Aucune demande pour le moment.</div></div>
+  </div>
+</main>
+
+<div id="toasts"></div>
+
+<script>
+let demandes = [];
+
+function toast(titre, message) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<b>${titre}</b><span>${message}</span>`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => { el.style.transition='opacity .4s'; el.style.opacity='0'; setTimeout(()=>el.remove(),400); }, 6000);
+}
+
+function formatPrix(p) { return Number(p).toLocaleString('fr-FR') + ' Ar'; }
+function libelleStatut(s) { return s === 'EN_ATTENTE' ? 'En attente' : s === 'VALIDEE' ? '✓ Validée' : '✗ Refusée'; }
+
+/* ---- Annonces ---- */
+async function chargerAnnonces() {
+  const res = await fetch('/api/annonces');
+  const json = await res.json();
+  const biens = json.data || [];
+  const tbody = document.querySelector('#table-annonces tbody');
+  tbody.innerHTML = biens.length ? biens.map(b => `
+    <tr><td>${b.titre}</td><td>${b.ville}</td><td>${formatPrix(b.prix)}</td>
+      <td><span class="badge-dispo ${b.disponible ? 'oui' : 'non'}">${b.disponible ? 'oui' : 'non'}</span></td></tr>
+  `).join('') : '<tr><td colspan="4" class="vide">Aucune annonce publiée.</td></tr>';
+}
+
+async function publierAnnonce() {
+  const titre = document.getElementById('a-titre').value.trim();
+  if (!titre) { alert('Le titre est obligatoire.'); return; }
+
+  const corps = new URLSearchParams({
+    titre: titre,
+    type: document.getElementById('a-type').value,
+    ville: document.getElementById('a-ville').value,
+    quartier: document.getElementById('a-quartier').value,
+    surface: document.getElementById('a-surface').value || 0,
+    nbPieces: document.getElementById('a-pieces').value || 0,
+    prix: document.getElementById('a-prix').value || 0
+  });
+
+  const res = await fetch('/api/annonces', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: corps });
+  if (res.ok) {
+    ['a-titre','a-ville','a-quartier','a-surface','a-pieces','a-prix'].forEach(id => document.getElementById(id).value = '');
+    toast('Annonce publiée', titre + ' est maintenant visible côté client.');
+    chargerAnnonces();
+  } else {
+    const json = await res.json();
+    alert('Erreur : ' + (json.message || 'inconnue'));
+  }
+}
+
+/* ---- Demandes de visite ---- */
+async function chargerDemandes() {
+  const res = await fetch('/api/visites');
+  const json = await res.json();
+  demandes = json.data || [];
+  afficherDemandes();
+}
+
+function afficherDemandes() {
+  const conteneur = document.getElementById('liste-demandes');
+  if (!demandes.length) {
+    conteneur.innerHTML = '<div class="vide">Aucune demande pour le moment.</div>';
+    return;
+  }
+  conteneur.innerHTML = demandes.map(d => `
+    <div class="carte-demande ${d.statut.toLowerCase()}" data-id="${d.id}">
+      <div class="haut">
+        <div><b>${d.nomClient}</b><div class="sous">souhaite visiter : ${d.bienTitre}</div></div>
+        <span class="badge ${d.statut}">${libelleStatut(d.statut)}</span>
+      </div>
+      <div class="infos-demande">
+        <div><span>📞 Téléphone :</span> ${d.telephone || '—'}</div>
+        <div><span>📅 Date souhaitée :</span> ${d.dateSouhaitee || '—'}</div>
+        ${d.message ? '<div><span>💬 Message :</span> ' + d.message + '</div>' : ''}
+      </div>
+      ${d.statut === 'EN_ATTENTE' ? `
+        <div class="actions-demande">
+          <button class="btn btn-valider" onclick="repondre(${d.id}, 'valider')">✓ Valider</button>
+          <button class="btn btn-refuser" onclick="repondre(${d.id}, 'refuser')">✗ Refuser</button>
+        </div>` : ''}
+    </div>`).join('');
+}
+
+async function repondre(id, action) {
+  const corps = new URLSearchParams({ id: id });
+  const res = await fetch('/api/visites/' + action, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: corps });
+  if (res.ok) {
+    chargerDemandes();
+  } else {
+    const json = await res.json();
+    alert('Erreur : ' + (json.message || 'inconnue'));
+  }
+}
+
+/* ---- Temps reel (Server-Sent Events) ---- */
+function connecterFluxTempsReel() {
+  const source = new EventSource('/api/events');
+
+  source.onopen = () => {
+    document.getElementById('point-connexion').classList.remove('off');
+    document.getElementById('texte-connexion').textContent = 'En direct';
+  };
+  source.onerror = () => {
+    document.getElementById('point-connexion').classList.add('off');
+    document.getElementById('texte-connexion').textContent = 'Reconnexion...';
+  };
+
+  source.addEventListener('demande', (e) => {
+    const d = JSON.parse(e.data);
+    toast('📨 Nouvelle demande de visite', d.nomClient + ' pour "' + d.bienTitre + '"');
+    chargerDemandes();
+  });
+
+  // Si une autre session agence valide/refuse, on se resynchronise aussi
+  source.addEventListener('validation', chargerDemandes);
+  source.addEventListener('refus', chargerDemandes);
+}
+
+chargerAnnonces();
+chargerDemandes();
+connecterFluxTempsReel();
+</script>
+</body>
+</html>

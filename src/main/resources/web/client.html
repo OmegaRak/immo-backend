@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Espace Client — Recherche immobilière</title>
+<style>
+  :root {
+    --bg: #f4f7fb; --card: #ffffff; --acc: #0d9488; --acc-dark: #0f766e;
+    --txt: #0f172a; --mut: #64748b; --line: #e2e8f0;
+    --ok: #16a34a; --warn: #d97706; --err: #dc2626;
+    --shadow: 0 1px 3px rgba(15,23,42,.08), 0 8px 24px rgba(15,23,42,.06);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--txt); }
+
+  header { background:linear-gradient(135deg,var(--acc),var(--acc-dark)); color:#fff; padding:22px 28px; }
+  header .ligne { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+  header h1 { margin:0; font-size:22px; }
+  header p { margin:4px 0 0; opacity:.9; font-size:13px; }
+  .statut-connexion { display:flex; align-items:center; gap:6px; font-size:12px; background:rgba(255,255,255,.15); padding:6px 12px; border-radius:20px; }
+  .point { width:8px; height:8px; border-radius:50%; background:#4ade80; }
+  .point.off { background:#f87171; }
+  nav a { color:#fff; text-decoration:none; font-size:12px; opacity:.85; margin-left:14px; }
+
+  main { max-width:1150px; margin:0 auto; padding:26px 20px 60px; }
+  h2.section { font-size:16px; color:var(--acc-dark); margin:32px 0 14px; display:flex; align-items:center; gap:8px; }
+  h2.section:first-of-type { margin-top:0; }
+
+  .grille-biens { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; }
+  .carte-bien { background:var(--card); border-radius:14px; box-shadow:var(--shadow); padding:18px; border:1px solid var(--line); transition:transform .15s; }
+  .carte-bien.neuf { animation:apparition .6s ease; border-color:var(--acc); }
+  @keyframes apparition { from { transform:scale(.95); opacity:0; box-shadow:0 0 0 4px rgba(13,148,136,.25);} to { transform:scale(1); opacity:1; } }
+  .carte-bien h3 { margin:0 0 8px; font-size:16px; }
+  .tag { display:inline-block; font-size:11px; background:#ecfdf5; color:var(--acc-dark); padding:3px 9px; border-radius:20px; font-weight:600; margin-bottom:8px; }
+  .carte-bien .lieu { color:var(--mut); font-size:13px; margin-bottom:10px; }
+  .carte-bien .details { display:flex; gap:14px; font-size:12.5px; color:var(--mut); margin-bottom:12px; }
+  .carte-bien .prix { font-size:18px; font-weight:700; color:var(--acc-dark); margin-bottom:12px; }
+  .btn { border:0; border-radius:8px; padding:10px 16px; font-weight:600; cursor:pointer; font-size:13.5px; }
+  .btn-primaire { background:var(--acc); color:#fff; width:100%; }
+  .btn-primaire:hover { background:var(--acc-dark); }
+  .btn-primaire:disabled { background:#cbd5e1; cursor:not-allowed; }
+
+  .carte-demande { background:var(--card); border-radius:12px; box-shadow:var(--shadow); padding:16px 18px; margin-bottom:10px; border-left:5px solid var(--warn); display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+  .carte-demande.validee { border-left-color:var(--ok); }
+  .carte-demande.refusee { border-left-color:var(--err); opacity:.7; }
+  .carte-demande .info b { display:block; font-size:14.5px; }
+  .carte-demande .info span { font-size:12.5px; color:var(--mut); }
+  .badge { font-size:11.5px; font-weight:700; padding:5px 12px; border-radius:20px; white-space:nowrap; }
+  .badge.EN_ATTENTE { background:#fffbeb; color:var(--warn); }
+  .badge.VALIDEE { background:#f0fdf4; color:var(--ok); }
+  .badge.REFUSEE { background:#fef2f2; color:var(--err); }
+
+  /* Modale */
+  .fond-modale { position:fixed; inset:0; background:rgba(15,23,42,.5); display:none; align-items:center; justify-content:center; z-index:50; padding:16px; }
+  .fond-modale.ouverte { display:flex; }
+  .modale { background:#fff; border-radius:16px; padding:24px; width:100%; max-width:420px; box-shadow:0 20px 60px rgba(0,0,0,.3); }
+  .modale h3 { margin:0 0 4px; }
+  .modale p.sous { color:var(--mut); font-size:13px; margin:0 0 18px; }
+  .champ { margin-bottom:12px; }
+  .champ label { display:block; font-size:12.5px; font-weight:600; margin-bottom:5px; color:var(--mut); }
+  .champ input, .champ textarea { width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); font-size:14px; font-family:inherit; }
+  .actions-modale { display:flex; gap:10px; margin-top:16px; }
+  .btn-secondaire { background:#f1f5f9; color:var(--txt); flex:1; }
+  .actions-modale .btn-primaire { flex:1; }
+
+  /* Toasts */
+  #toasts { position:fixed; top:20px; right:20px; z-index:100; display:flex; flex-direction:column; gap:10px; max-width:340px; }
+  .toast { background:#fff; border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,.15); padding:14px 16px; border-left:5px solid var(--acc); animation:glisse .35s ease; }
+  .toast.validation { border-left-color:var(--ok); }
+  .toast.refus { border-left-color:var(--err); }
+  .toast b { display:block; font-size:13.5px; margin-bottom:2px; }
+  .toast span { font-size:12.5px; color:var(--mut); }
+  @keyframes glisse { from { transform:translateX(40px); opacity:0; } to { transform:translateX(0); opacity:1; } }
+
+  .vide { color:var(--mut); font-size:13.5px; padding:20px; text-align:center; background:var(--card); border-radius:12px; border:1px dashed var(--line); }
+  code.id { font-size:11px; color:#94a3b8; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="ligne">
+    <div>
+      <h1>🏠 Espace Client</h1>
+      <p>Parcourez les annonces et suivez vos demandes de visite en temps réel</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px">
+      <span class="statut-connexion"><span class="point" id="point-connexion"></span><span id="texte-connexion">Connexion...</span></span>
+      <nav><a href="/agence.html">Espace agence →</a></nav>
+    </div>
+  </div>
+</header>
+
+<main>
+  <h2 class="section">📋 Annonces disponibles</h2>
+  <div class="grille-biens" id="grille-biens"></div>
+
+  <h2 class="section">📨 Mes demandes de visite</h2>
+  <div id="mes-demandes"><div class="vide">Vous n'avez pas encore fait de demande de visite.</div></div>
+</main>
+
+<div class="fond-modale" id="fond-modale">
+  <div class="modale">
+    <h3>Demander une visite</h3>
+    <p class="sous" id="modale-sous"></p>
+    <div class="champ"><label>Nom complet</label><input id="m-nom" placeholder="Ex: Rakoto Jean"></div>
+    <div class="champ"><label>Téléphone</label><input id="m-tel" placeholder="Ex: 034 00 000 00"></div>
+    <div class="champ"><label>Date souhaitée</label><input id="m-date" type="date"></div>
+    <div class="champ"><label>Message (optionnel)</label><textarea id="m-msg" rows="2" placeholder="Précisions sur votre disponibilité..."></textarea></div>
+    <div class="actions-modale">
+      <button class="btn btn-secondaire" onclick="fermerModale()">Annuler</button>
+      <button class="btn btn-primaire" onclick="envoyerDemande()">Envoyer la demande</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+// Identifiant anonyme persistant pour ce navigateur (permet de savoir quelles demandes sont "les miennes")
+let clientId = localStorage.getItem('immo_client_id');
+if (!clientId) {
+  clientId = 'client-' + Math.random().toString(36).slice(2, 10);
+  localStorage.setItem('immo_client_id', clientId);
+}
+
+let biens = [];
+let bienSelectionne = null;
+
+function toast(titre, message, classe) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (classe ? ' ' + classe : '');
+  el.innerHTML = `<b>${titre}</b><span>${message}</span>`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => { el.style.transition='opacity .4s'; el.style.opacity='0'; setTimeout(()=>el.remove(),400); }, 6000);
+}
+
+function formatPrix(p) { return Number(p).toLocaleString('fr-FR') + ' Ar'; }
+
+function carteBienHtml(b, estNeuf) {
+  return `<div class="carte-bien ${estNeuf ? 'neuf' : ''}" data-id="${b.id}">
+      <span class="tag">${b.type}</span>
+      <h3>${b.titre}</h3>
+      <div class="lieu">📍 ${b.ville}${b.quartier ? ', ' + b.quartier : ''}</div>
+      <div class="details"><span>📐 ${Math.round(b.surface)} m²</span><span>🚪 ${b.nbPieces} pièce(s)</span></div>
+      <div class="prix">${formatPrix(b.prix)}</div>
+      <button class="btn btn-primaire" ${b.disponible ? '' : 'disabled'} onclick="ouvrirModale(${b.id})">
+        ${b.disponible ? 'Demander une visite' : 'Indisponible'}
+      </button>
+    </div>`;
+}
+
+async function chargerAnnonces() {
+  try {
+    const res = await fetch('/api/annonces');
+    const json = await res.json();
+    biens = json.data || [];
+    document.getElementById('grille-biens').innerHTML =
+      biens.length ? biens.map(b => carteBienHtml(b, false)).join('') : '<div class="vide">Aucune annonce pour le moment.</div>';
+  } catch (e) {
+    document.getElementById('grille-biens').innerHTML = '<div class="vide">Impossible de charger les annonces.</div>';
+  }
+}
+
+async function chargerMesDemandes() {
+  try {
+    const res = await fetch('/api/visites?clientId=' + encodeURIComponent(clientId));
+    const json = await res.json();
+    afficherDemandes(json.data || []);
+  } catch (e) { /* silencieux */ }
+}
+
+function afficherDemandes(liste) {
+  const conteneur = document.getElementById('mes-demandes');
+  if (!liste.length) {
+    conteneur.innerHTML = '<div class="vide">Vous n\\'avez pas encore fait de demande de visite.</div>';
+    return;
+  }
+  conteneur.innerHTML = liste.map(d => `
+    <div class="carte-demande ${d.statut.toLowerCase()}" data-demande-id="${d.id}">
+      <div class="info">
+        <b>${d.bienTitre}</b>
+        <span>Demande du ${new Date(d.dateCreation).toLocaleDateString('fr-FR')} ${d.dateSouhaitee ? '· visite souhaitée le ' + d.dateSouhaitee : ''}</span>
+      </div>
+      <span class="badge ${d.statut}">${libelleStatut(d.statut)}</span>
+    </div>`).join('');
+}
+
+function libelleStatut(s) {
+  return s === 'EN_ATTENTE' ? 'En attente' : s === 'VALIDEE' ? '✓ Validée' : '✗ Refusée';
+}
+
+function ouvrirModale(id) {
+  bienSelectionne = biens.find(b => b.id === id);
+  if (!bienSelectionne) return;
+  document.getElementById('modale-sous').textContent = bienSelectionne.titre + ' — ' + bienSelectionne.ville;
+  document.getElementById('m-nom').value = '';
+  document.getElementById('m-tel').value = '';
+  document.getElementById('m-date').value = '';
+  document.getElementById('m-msg').value = '';
+  document.getElementById('fond-modale').classList.add('ouverte');
+}
+function fermerModale() { document.getElementById('fond-modale').classList.remove('ouverte'); }
+
+async function envoyerDemande() {
+  const nomClient = document.getElementById('m-nom').value.trim();
+  if (!nomClient) { alert('Le nom est obligatoire.'); return; }
+
+  const corps = new URLSearchParams({
+    bienId: bienSelectionne.id,
+    clientId: clientId,
+    nomClient: nomClient,
+    telephone: document.getElementById('m-tel').value,
+    dateSouhaitee: document.getElementById('m-date').value,
+    message: document.getElementById('m-msg').value
+  });
+
+  const res = await fetch('/api/visites', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: corps });
+  if (res.ok) {
+    fermerModale();
+    toast('Demande envoyée', 'L\\'agence a été notifiée de votre demande.', '');
+    chargerMesDemandes();
+  } else {
+    const json = await res.json();
+    alert('Erreur : ' + (json.message || 'inconnue'));
+  }
+}
+
+/* ---- Temps reel (Server-Sent Events) ---- */
+function connecterFluxTempsReel() {
+  const source = new EventSource('/api/events');
+
+  source.onopen = () => {
+    document.getElementById('point-connexion').classList.remove('off');
+    document.getElementById('texte-connexion').textContent = 'En direct';
+  };
+  source.onerror = () => {
+    document.getElementById('point-connexion').classList.add('off');
+    document.getElementById('texte-connexion').textContent = 'Reconnexion...';
+  };
+
+  source.addEventListener('annonce', (e) => {
+    const bien = JSON.parse(e.data);
+    biens.unshift(bien);
+    const grille = document.getElementById('grille-biens');
+    const vide = grille.querySelector('.vide');
+    if (vide) grille.innerHTML = '';
+    grille.insertAdjacentHTML('afterbegin', carteBienHtml(bien, true));
+    toast('🏠 Nouvelle annonce', bien.titre + ' — ' + bien.ville, '');
+  });
+
+  source.addEventListener('validation', (e) => {
+    const d = JSON.parse(e.data);
+    if (d.clientId !== clientId) return;
+    toast('✅ Demande validée', 'Votre visite pour "' + d.bienTitre + '" est confirmée.', 'validation');
+    chargerMesDemandes();
+  });
+
+  source.addEventListener('refus', (e) => {
+    const d = JSON.parse(e.data);
+    if (d.clientId !== clientId) return;
+    toast('❌ Demande refusée', 'Votre demande pour "' + d.bienTitre + '" a été refusée.', 'refus');
+    chargerMesDemandes();
+  });
+}
+
+chargerAnnonces();
+chargerMesDemandes();
+connecterFluxTempsReel();
+</script>
+</body>
+</html>
