@@ -45,8 +45,14 @@ public class StaticFileHandler implements HttpHandler {
     private String typeMime(String chemin) {
         if (chemin.endsWith(".html")) return "text/html; charset=utf-8";
         if (chemin.endsWith(".css"))  return "text/css; charset=utf-8";
-        if (chemin.endsWith(".js"))   return "application/javascript; charset=utf-8";
+        if (chemin.endsWith(".js") || chemin.endsWith(".mjs")) return "application/javascript; charset=utf-8";
         if (chemin.endsWith(".json")) return "application/json; charset=utf-8";
+        if (chemin.endsWith(".svg"))  return "image/svg+xml";
+        if (chemin.endsWith(".png"))  return "image/png";
+        if (chemin.endsWith(".jpg") || chemin.endsWith(".jpeg")) return "image/jpeg";
+        if (chemin.endsWith(".ico"))  return "image/x-icon";
+        if (chemin.endsWith(".woff2")) return "font/woff2";
+        if (chemin.endsWith(".woff"))  return "font/woff";
         return "application/octet-stream";
     }
 }

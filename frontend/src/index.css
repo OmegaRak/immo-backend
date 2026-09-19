@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+@layer utilities {
+  .champ-input {
+    @apply w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm;
+  }
+}
+
+/* Petite animation d'apparition pour les cartes qui arrivent en temps reel */
+@keyframes apparition {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-apparition {
+  animation: apparition 0.5s ease;
+}
+
+@keyframes glisse {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-glisse {
+  animation: glisse 0.35s ease;
+}

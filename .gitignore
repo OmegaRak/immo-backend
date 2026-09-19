@@ -11,4 +11,6 @@ dependency-reduced-pom.xml
 .project
 *.log
 .DS_Store
+frontend/node_modules/
+frontend/dist/
 bin/
